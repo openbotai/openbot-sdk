@@ -54,7 +54,7 @@ def test_bench_rollout_includes_idempotency_key(mock_api: respx.MockRouter) -> N
 
 
 def test_run_wait_polls_until_success(mock_api: respx.MockRouter) -> None:
-    get_route = mock_api.get("/bench/runs/run_8c91a4")
+    get_route = mock_api.get("/bench/rollouts/run_8c91a4")
     get_route.side_effect = [
         Response(200, json={"id": "run_8c91a4", "status": "running"}),
         Response(
@@ -84,7 +84,7 @@ def test_run_wait_polls_until_success(mock_api: respx.MockRouter) -> None:
 
 
 def test_run_wait_raises_on_failure(mock_api: respx.MockRouter) -> None:
-    mock_api.get("/bench/runs/run_8c91a4").respond(
+    mock_api.get("/bench/rollouts/run_8c91a4").respond(
         200,
         json={"id": "run_8c91a4", "status": "failed"},
     )

@@ -40,7 +40,7 @@ class Run:
 
     def refresh(self) -> Run:
         """Fetch the latest run state from the API."""
-        data = self._client._request("GET", f"/bench/runs/{self.run_id}")
+        data = self._client._request("GET", f"/bench/rollouts/{self.run_id}")
         self._data = data
         return self
 
@@ -68,8 +68,8 @@ class Run:
         while time.monotonic() < deadline:
             self.refresh()
             status = self.status.lower()
-            if status in {"success", "completed"}:
-                return RunResult(self._data.get("result", {}))
+            if status in {"success", "completed", "done"}:
+                return RunResult(self._data)
             if status in {"failed", "error", "cancelled"}:
                 raise RunError(f"Run {self.run_id} ended with status '{status}'")
             time.sleep(poll_interval)
@@ -82,29 +82,31 @@ class RunResult:
 
     def __init__(self, data: dict[str, Any]) -> None:
         self._data = data
+        # The API may return metrics under either "result" or "metrics".
+        self._metrics = cast(dict[str, Any], data.get("result") or data.get("metrics") or {})
 
     @property
     def task_success(self) -> float | None:
         """Overall task success rate."""
-        value = self._data.get("task_success")
+        value = self._metrics.get("task_success")
         return float(value) if value is not None else None
 
     @property
     def intervention_rate(self) -> float | None:
         """Rate of human intervention."""
-        value = self._data.get("intervention_rate")
+        value = self._metrics.get("intervention_rate")
         return float(value) if value is not None else None
 
     @property
     def sim_to_real_gap(self) -> float | None:
         """Sim-to-real success rate gap."""
-        value = self._data.get("sim_to_real_gap")
+        value = self._metrics.get("sim_to_real_gap")
         return float(value) if value is not None else None
 
     @property
     def subtask(self) -> dict[str, Any]:
         """Per-subtask metrics."""
-        return cast(dict[str, Any], self._data.get("subtask", {}))
+        return cast(dict[str, Any], self._metrics.get("subtask", {}))
 
     def __getitem__(self, key: str) -> Any:
         return self._data[key]
