@@ -7,8 +7,8 @@ from typing import Any, cast
 
 import httpx
 
-from openbotai._bench import BenchResource
-from openbotai._errors import APIError, AuthenticationError
+from openbot_sdk._bench import BenchResource
+from openbot_sdk._errors import APIError, AuthenticationError
 
 DEFAULT_BASE_URL = "https://api.openbot.ai/v1"
 
@@ -40,14 +40,14 @@ class Client:
             base_url=self.base_url,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
-                "User-Agent": f"openbotai-python/{self._version()}",
+                "User-Agent": f"openbot_sdk-python/{self._version()}",
             },
             timeout=60.0,
         )
         self.bench = BenchResource(self)
 
     def _version(self) -> str:
-        from openbotai._version import __version__
+        from openbot_sdk._version import __version__
 
         return __version__
 

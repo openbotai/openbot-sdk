@@ -1,11 +1,11 @@
-# OpenBotai
+# openbot-sdk
 
 > Python SDK for [OpenBot.ai](https://openbot.ai) — robot policy evaluation, robot data curation, and synthetic training data.
 
 ```python
-import openbotai
+import openbot_sdk
 
-client = openbotai.Client()  # reads OPENBOT_API_KEY
+client = openbot_sdk.Client()  # reads OPENBOT_API_KEY
 
 run = client.bench.rollout(
     policy="openvla-7b",
@@ -27,7 +27,7 @@ print(result.intervention_rate)     # 0.14
 ## Install
 
 ```bash
-pip install openbotai
+pip install openbot-sdk
 ```
 
 Requires Python 3.9+.
@@ -43,7 +43,7 @@ export OPENBOT_API_KEY="ob_live_..."
 Or pass it directly:
 
 ```python
-client = openbotai.Client(api_key="ob_live_...")
+client = openbot_sdk.Client(api_key="ob_live_...")
 ```
 
 ## Usage
@@ -67,7 +67,7 @@ print(result.task_success)
 ### Handle webhooks
 
 ```python
-from openbotai import verify_signature
+from openbot_sdk import verify_signature
 
 payload = request.body
 signature = request.headers["X-OpenBot-Signature"]
@@ -94,7 +94,7 @@ python -m build
 
 ## Status
 
-OpenBotai is in early alpha. The initial release supports Bench rollout submission and polling.
+openbot-sdk is in early alpha. The initial release supports Bench rollout submission and polling.
 Data curation and synthetic data APIs will follow as the OpenBot.ai platform expands.
 
 ## License

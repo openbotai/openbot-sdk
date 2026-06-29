@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from openbotai._run import Run
+from openbot_sdk._run import Run
 
 if TYPE_CHECKING:
-    from openbotai._client import Client
+    from openbot_sdk._client import Client
 
 
 class BenchResource:

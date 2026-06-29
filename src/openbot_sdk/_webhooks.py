@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import time
 
-from openbotai._errors import WebhookVerificationError
+from openbot_sdk._errors import WebhookVerificationError
 
 DEFAULT_TOLERANCE_SECONDS = 300  # 5 minutes
 

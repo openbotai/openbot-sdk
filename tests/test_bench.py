@@ -2,7 +2,7 @@ import pytest
 import respx
 from httpx import Response
 
-import openbotai
+import openbot_sdk
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def test_bench_rollout_queues_run(mock_api: respx.MockRouter) -> None:
         },
     )
 
-    client = openbotai.Client(api_key="test-key")
+    client = openbot_sdk.Client(api_key="test-key")
     run = client.bench.rollout(
         policy="openvla-7b",
         embodiment="franka_panda",
@@ -41,7 +41,7 @@ def test_bench_rollout_includes_idempotency_key(mock_api: respx.MockRouter) -> N
         json={"id": "run_abc", "status": "queued"},
     )
 
-    client = openbotai.Client(api_key="test-key")
+    client = openbot_sdk.Client(api_key="test-key")
     client.bench.rollout(
         policy="openvla-7b",
         embodiment="franka_panda",
@@ -72,8 +72,8 @@ def test_run_wait_polls_until_success(mock_api: respx.MockRouter) -> None:
         ),
     ]
 
-    client = openbotai.Client(api_key="test-key")
-    run = openbotai.Run(client, "run_8c91a4")
+    client = openbot_sdk.Client(api_key="test-key")
+    run = openbot_sdk.Run(client, "run_8c91a4")
     result = run.wait(poll_interval=0.01, timeout=1.0)
 
     assert result.task_success == pytest.approx(0.73)
@@ -89,10 +89,10 @@ def test_run_wait_raises_on_failure(mock_api: respx.MockRouter) -> None:
         json={"id": "run_8c91a4", "status": "failed"},
     )
 
-    client = openbotai.Client(api_key="test-key")
-    run = openbotai.Run(client, "run_8c91a4")
+    client = openbot_sdk.Client(api_key="test-key")
+    run = openbot_sdk.Run(client, "run_8c91a4")
 
-    with pytest.raises(openbotai.RunError):
+    with pytest.raises(openbot_sdk.RunError):
         run.wait(poll_interval=0.01, timeout=1.0)
 
     client.close()

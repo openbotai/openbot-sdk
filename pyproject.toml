@@ -1,5 +1,5 @@
 [project]
-name = "openbotai"
+name = "openbot-sdk"
 version = "0.1.0"
 description = "Python SDK for OpenBot.ai — robot policy evaluation, data curation, and synthetic training data."
 readme = "README.md"
@@ -52,15 +52,15 @@ dev = [
 [project.urls]
 Homepage = "https://openbot.ai"
 Documentation = "https://openbot.ai/docs"
-Repository = "https://github.com/openbotai/openbotai"
-Issues = "https://github.com/openbotai/openbotai/issues"
+Repository = "https://github.com/openbotai/openbot-sdk"
+Issues = "https://github.com/openbotai/openbot-sdk/issues"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/openbotai"]
+packages = ["src/openbot_sdk"]
 
 [tool.hatch.build.targets.sdist]
 include = [

@@ -5,10 +5,10 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any, cast
 
-from openbotai._errors import RunError
+from openbot_sdk._errors import RunError
 
 if TYPE_CHECKING:
-    from openbotai._client import Client
+    from openbot_sdk._client import Client
 
 
 class Run:
