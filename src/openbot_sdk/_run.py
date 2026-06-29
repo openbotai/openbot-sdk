@@ -30,7 +30,7 @@ class Run:
 
     @property
     def status(self) -> str:
-        """Current run status (e.g. queued, running, success, failed)."""
+        """Current run status: ``queued``, ``running``, ``done``, ``failed``, or ``cancelled``."""
         return str(self._data.get("status", "unknown"))
 
     @property
@@ -68,7 +68,9 @@ class Run:
         while time.monotonic() < deadline:
             self.refresh()
             status = self.status.lower()
-            if status in {"success", "completed", "done"}:
+            # The API's terminal success status is "done"; "success"/"completed"
+            # are accepted for forward/back-compat with older responses.
+            if status in {"done", "success", "completed"}:
                 return RunResult(self._data)
             if status in {"failed", "error", "cancelled"}:
                 raise RunError(f"Run {self.run_id} ended with status '{status}'")
