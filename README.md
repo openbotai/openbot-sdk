@@ -85,7 +85,9 @@ client.data.review(
     annotations=edited,
 )
 artifact = client.data.export(result.review_output_id, format="lerobot_sidecar")
-print(artifact["artifact_url"])
+content = client.data.download_export(artifact["id"])
+with open("subtasks.json", "wb") as output:
+    output.write(content)
 ```
 
 Unreviewed model output is never treated as ground truth. Segment confidence remains `None` unless the configured annotation profile has been independently calibrated.
@@ -120,7 +122,7 @@ python -m build
 
 ## Status
 
-openbot-sdk is in early alpha. Bench rollout and Data subtask/review/export clients are implemented;production Data availability still depends on the hosted video processor being deployed and configured.
+openbot-sdk is in early alpha. Bench rollout and Data subtask/review/export/download clients are implemented. The hosted Data processor is live in beta;machine-generated timelines still require explicit review before export.
 
 ## License
 

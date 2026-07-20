@@ -90,8 +90,13 @@ def test_data_review_and_export(mock_api: respx.MockRouter) -> None:
             "id": "export_123",
             "status": "ready",
             "format": "lerobot_sidecar",
-            "artifact_url": "https://cdn.openbot.ai/export_123.json",
+            "artifact_url": "https://api.openbot.ai/v1/data/exports/export_123/content",
         },
+    )
+    download_route = mock_api.get("/data/exports/export_123/content").respond(
+        200,
+        content=b'{"schema_version":"openbot.lerobot.subtasks.v1"}',
+        headers={"content-type": "application/json"},
     )
     client = openbot_sdk.Client(api_key="test-key")
 
@@ -103,11 +108,14 @@ def test_data_review_and_export(mock_api: respx.MockRouter) -> None:
         decisions=[{"segment_id": "seg", "action": "approve"}],
     )
     exported = client.data.export("review_123", format="lerobot_sidecar")
+    content = client.data.download_export(exported["id"])
 
     assert review["status"] == "approved"
     assert exported["id"] == "export_123"
+    assert b"openbot.lerobot.subtasks.v1" in content
     assert review_route.called
     assert export_route.called
+    assert download_route.calls[0].request.headers["authorization"] == "Bearer test-key"
     client.close()
 
 

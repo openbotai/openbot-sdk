@@ -74,6 +74,16 @@ class Client:
             )
         return cast(dict[str, Any], response.json())
 
+    def _request_bytes(self, method: str, path: str) -> bytes:
+        """Make an authenticated request and return the raw response body."""
+        response = self._http.request(method, path)
+        if response.status_code >= 400:
+            raise APIError(
+                f"API request failed ({response.status_code}): {response.text}",
+                status_code=response.status_code,
+            )
+        return response.content
+
     def close(self) -> None:
         """Close the underlying HTTP client."""
         self._http.close()

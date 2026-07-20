@@ -125,3 +125,7 @@ class DataResource:
             f"/data/review-outputs/{review_output_id}/exports",
             json={"format": format},
         )
+
+    def download_export(self, export_id: str) -> bytes:
+        """Download an approved export through the org-scoped Data API."""
+        return self._client._request_bytes("GET", f"/data/exports/{export_id}/content")
