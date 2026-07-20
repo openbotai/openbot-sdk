@@ -23,5 +23,9 @@ class RunError(OpenBotError):
     """Raised when a rollout run fails or is cancelled."""
 
 
+class DataJobError(OpenBotError):
+    """Raised when a Data job fails or is cancelled."""
+
+
 class WebhookVerificationError(OpenBotError):
     """Raised when a webhook signature cannot be verified."""

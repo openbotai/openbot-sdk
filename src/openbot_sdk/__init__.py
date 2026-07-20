@@ -19,9 +19,12 @@ Example:
 
 from openbot_sdk._bench import BenchResource
 from openbot_sdk._client import Client
+from openbot_sdk._data import DataResource, ExportFormat, ReviewStatus
+from openbot_sdk._data_job import DataJob, DataJobResult
 from openbot_sdk._errors import (
     APIError,
     AuthenticationError,
+    DataJobError,
     OpenBotError,
     RunError,
     WebhookVerificationError,
@@ -33,12 +36,18 @@ from openbot_sdk._webhooks import construct_signature, verify_signature
 __all__ = [
     "Client",
     "BenchResource",
+    "DataResource",
+    "DataJob",
+    "DataJobResult",
+    "ReviewStatus",
+    "ExportFormat",
     "Run",
     "RunResult",
     "OpenBotError",
     "AuthenticationError",
     "APIError",
     "RunError",
+    "DataJobError",
     "WebhookVerificationError",
     "verify_signature",
     "construct_signature",

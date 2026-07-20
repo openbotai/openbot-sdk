@@ -8,6 +8,7 @@ from typing import Any, cast
 import httpx
 
 from openbot_sdk._bench import BenchResource
+from openbot_sdk._data import DataResource
 from openbot_sdk._errors import APIError, AuthenticationError
 
 DEFAULT_BASE_URL = "https://api.openbot.ai/v1"
@@ -45,6 +46,7 @@ class Client:
             timeout=60.0,
         )
         self.bench = BenchResource(self)
+        self.data = DataResource(self)
 
     def _version(self) -> str:
         from openbot_sdk._version import __version__

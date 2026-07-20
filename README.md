@@ -64,6 +64,32 @@ result = run.wait()
 print(result.task_success)
 ```
 
+### Generate and review a robot-video subtask timeline
+
+```python
+job = client.data.subtask_job(
+    dataset_id="data_123",
+    video_key="observation.images.top",
+    video_url="https://signed.example/episode.mp4",
+    task_hint="place the red block in the bowl",
+    taxonomy=["reach", "grasp", "place"],
+    idempotency_key="episode-123",
+)
+
+result = job.wait()
+edited = result.annotations
+# Review/edit `edited["timeline"]["segments"]` against the evidence frames.
+client.data.review(
+    result.review_output_id,
+    status="approved",
+    annotations=edited,
+)
+artifact = client.data.export(result.review_output_id, format="lerobot_sidecar")
+print(artifact["artifact_url"])
+```
+
+Unreviewed model output is never treated as ground truth. Segment confidence remains `None` unless the configured annotation profile has been independently calibrated.
+
 ### Handle webhooks
 
 ```python
@@ -94,8 +120,7 @@ python -m build
 
 ## Status
 
-openbot-sdk is in early alpha. The initial release supports Bench rollout submission and polling.
-Data curation and synthetic data APIs will follow as the OpenBot.ai platform expands.
+openbot-sdk is in early alpha. Bench rollout and Data subtask/review/export clients are implemented;production Data availability still depends on the hosted video processor being deployed and configured.
 
 ## License
 
