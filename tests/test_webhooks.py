@@ -40,3 +40,10 @@ def test_verify_signature_rejects_expired_timestamp() -> None:
 
     with pytest.raises(openbot_sdk.WebhookVerificationError):
         verify_signature(payload, signature, secret, tolerance_seconds=300)
+
+
+def test_webhook_signature_supports_non_utf8_payloads() -> None:
+    payload = b"\xff\xfe\x00robot-event"
+    signature = construct_signature(payload, "whsec_test")
+
+    verify_signature(payload, signature, "whsec_test")

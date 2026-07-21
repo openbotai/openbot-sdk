@@ -23,8 +23,10 @@ from openbot_sdk._data import DataResource, ExportFormat, ReviewStatus
 from openbot_sdk._data_job import DataJob, DataJobResult
 from openbot_sdk._errors import (
     APIError,
+    APIResponseError,
     AuthenticationError,
     DataJobError,
+    NetworkError,
     OpenBotError,
     RunError,
     WebhookVerificationError,
@@ -46,6 +48,8 @@ __all__ = [
     "OpenBotError",
     "AuthenticationError",
     "APIError",
+    "APIResponseError",
+    "NetworkError",
     "RunError",
     "DataJobError",
     "WebhookVerificationError",

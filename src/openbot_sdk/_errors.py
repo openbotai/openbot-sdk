@@ -19,6 +19,14 @@ class APIError(OpenBotError):
         self.status_code = status_code
 
 
+class APIResponseError(OpenBotError):
+    """Raised when a successful API response has an invalid payload."""
+
+
+class NetworkError(OpenBotError):
+    """Raised when the API cannot be reached or a request times out."""
+
+
 class RunError(OpenBotError):
     """Raised when a rollout run fails or is cancelled."""
 

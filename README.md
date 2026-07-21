@@ -100,11 +100,27 @@ Unreviewed model output is never treated as ground truth. Segment confidence rem
 from openbot_sdk import verify_signature
 
 payload = request.body
-signature = request.headers["X-OpenBot-Signature"]
+signature = request.headers["OpenBot-Signature"]
 secret = "whsec_..."
 
 verify_signature(payload, signature, secret)
 ```
+
+Pass the raw request bytes unchanged. This also supports binary and non-UTF-8 bodies.
+
+### Timeouts and retries
+
+```python
+client = openbot_sdk.Client(
+    timeout=60,
+    download_timeout=600,
+    max_retries=2,
+    retry_backoff=0.25,
+)
+content = client.data.download_export("export_123", timeout=900)
+```
+
+The client retries idempotent methods and mutations carrying an `Idempotency-Key` on transport errors, `429`, and transient `5xx` responses. Plain HTTP base URLs are rejected by default; use `allow_insecure_http=True` only for explicit local testing.
 
 ### Poll with custom settings
 

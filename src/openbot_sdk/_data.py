@@ -126,6 +126,8 @@ class DataResource:
             json={"format": format},
         )
 
-    def download_export(self, export_id: str) -> bytes:
+    def download_export(self, export_id: str, *, timeout: float | None = None) -> bytes:
         """Download an approved export through the org-scoped Data API."""
-        return self._client._request_bytes("GET", f"/data/exports/{export_id}/content")
+        return self._client._request_bytes(
+            "GET", f"/data/exports/{export_id}/content", timeout=timeout
+        )

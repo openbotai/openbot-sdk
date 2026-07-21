@@ -2,6 +2,7 @@ import os
 
 import pytest
 import respx
+from httpx import ConnectError, Request, Response
 
 import openbot_sdk
 from openbot_sdk import AuthenticationError
@@ -51,4 +52,53 @@ def test_client_request_raises_api_error(mock_api: respx.MockRouter) -> None:
         client._request("GET", "/bench/runs/run_123")
 
     assert exc_info.value.status_code == 404
+    client.close()
+
+
+def test_client_rejects_insecure_base_url() -> None:
+    with pytest.raises(ValueError, match="HTTPS"):
+        openbot_sdk.Client(api_key="test-key", base_url="http://api.example.test/v1")
+
+
+def test_client_allows_explicit_local_http_for_testing() -> None:
+    client = openbot_sdk.Client(
+        api_key="test-key",
+        base_url="http://127.0.0.1:8787/v1",
+        allow_insecure_http=True,
+    )
+    client.close()
+
+
+def test_client_wraps_network_errors(mock_api: respx.MockRouter) -> None:
+    mock_api.get("/bench/runs/run_123").mock(
+        side_effect=ConnectError("offline", request=Request("GET", "https://api.openbot.ai"))
+    )
+    client = openbot_sdk.Client(api_key="test-key", max_retries=0)
+
+    with pytest.raises(openbot_sdk.NetworkError, match="offline"):
+        client._request("GET", "/bench/runs/run_123")
+    client.close()
+
+
+def test_client_rejects_invalid_success_payload(mock_api: respx.MockRouter) -> None:
+    mock_api.get("/bench/runs/run_123").respond(200, text="not-json")
+    client = openbot_sdk.Client(api_key="test-key")
+
+    with pytest.raises(openbot_sdk.APIResponseError, match="non-JSON"):
+        client._request("GET", "/bench/runs/run_123")
+    client.close()
+
+
+def test_client_retries_idempotent_request(mock_api: respx.MockRouter) -> None:
+    route = mock_api.get("/bench/runs/run_123")
+    route.side_effect = [
+        Response(503, text="busy"),
+        Response(200, json={"id": "run_123", "status": "running"}),
+    ]
+    client = openbot_sdk.Client(api_key="test-key", retry_backoff=0)
+
+    data = client._request("GET", "/bench/runs/run_123")
+
+    assert data["id"] == "run_123"
+    assert route.call_count == 2
     client.close()

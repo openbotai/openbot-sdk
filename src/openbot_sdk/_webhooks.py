@@ -59,7 +59,7 @@ def verify_signature(
     if abs(now - timestamp) > tolerance_seconds:
         raise WebhookVerificationError("Webhook timestamp is outside tolerance")
 
-    signed_payload = f"{timestamp}.{payload.decode('utf-8')}".encode("utf-8")
+    signed_payload = str(timestamp).encode("ascii") + b"." + payload
     computed = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
 
     if not hmac.compare_digest(computed, expected_sig):
@@ -80,6 +80,6 @@ def construct_signature(payload: bytes, secret: str, timestamp: int | None = Non
     """
     if timestamp is None:
         timestamp = int(time.time())
-    signed_payload = f"{timestamp}.{payload.decode('utf-8')}".encode("utf-8")
+    signed_payload = str(timestamp).encode("ascii") + b"." + payload
     sig = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
     return f"t={timestamp},v1={sig}"
