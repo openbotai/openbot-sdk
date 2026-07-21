@@ -2,6 +2,8 @@
 
 > Python SDK for [OpenBot.ai](https://openbot.ai) — robot policy evaluation, robot data curation, and synthetic training data.
 
+[API documentation](https://openbot.ai/api/docs) · [Source repository](https://github.com/openbotai/openbot-sdk)
+
 ```python
 import openbot_sdk
 
