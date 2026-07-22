@@ -132,15 +132,31 @@ result = run.wait(poll_interval=10.0, timeout=7200.0)
 
 ```bash
 pip install -e ".[dev]"
+python scripts/check_version.py
 pytest -v
 ruff check src tests
 mypy src
 python -m build
 ```
 
+`VERSION` is the package version source of truth. To release, update `VERSION`
+and `CHANGELOG.md`, verify locally, then publish a GitHub Release whose tag is
+`v<version>`. The release workflow validates the tag before publishing to PyPI.
+
 ## Status
 
-openbot-sdk is in early alpha. Bench rollout and Data subtask/review/export/download clients are implemented. The hosted Data processor is live in beta;machine-generated timelines still require explicit review before export.
+The current package version is `0.0.1`, an early preview. Bench rollout and Data
+subtask/review/export/download clients are implemented. The hosted Data processor
+is live in beta; machine-generated timelines still require explicit review before
+export.
+
+## Roadmap
+
+- `0.0.1` current: API authentication, retries, Bench rollout helpers, Data
+  register/subtask/poll/review/export/download, and webhook verification.
+- [`0.0.2` planned](docs/version-0.0.2.md): self-service private video upload,
+  dataset/job listing, honest progress, cancellation, and authenticated artifact
+  lifecycle helpers.
 
 ## License
 

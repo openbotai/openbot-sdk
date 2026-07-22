@@ -1,9 +1,14 @@
 # Changelog
 
-## 0.1.0
+## Unreleased
 
 ### Added
-- Initial alpha release.
+- Single-source package versioning with CI and release-tag validation.
+
+## 0.0.1
+
+### Added
+- Initial preview release.
 - `Client` for authenticating with the OpenBot.ai API.
 - `client.bench.rollout(...)` for queuing policy evaluation runs.
 - `Run.wait(...)` for polling rollout completion.
