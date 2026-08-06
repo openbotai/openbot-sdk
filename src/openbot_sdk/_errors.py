@@ -14,9 +14,18 @@ class AuthenticationError(OpenBotError):
 class APIError(OpenBotError):
     """Raised when the API returns a non-2xx response."""
 
-    def __init__(self, message: str, status_code: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        status_code: int | None = None,
+        *,
+        code: str | None = None,
+        retryable: bool | None = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.code = code
+        self.retryable = retryable
 
 
 class APIResponseError(OpenBotError):
@@ -27,12 +36,20 @@ class NetworkError(OpenBotError):
     """Raised when the API cannot be reached or a request times out."""
 
 
+class ClientClosedError(OpenBotError):
+    """Raised when a resource is used after its owning client was closed."""
+
+
 class RunError(OpenBotError):
     """Raised when a rollout run fails or is cancelled."""
 
 
 class DataJobError(OpenBotError):
     """Raised when a Data job fails or is cancelled."""
+
+
+class DataUploadError(OpenBotError):
+    """Raised when a Data upload is rejected, expires, or cannot be transferred."""
 
 
 class WebhookVerificationError(OpenBotError):

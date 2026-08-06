@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from openbot_sdk._errors import APIResponseError
 from openbot_sdk._run import Run
 
 if TYPE_CHECKING:
@@ -77,7 +78,10 @@ class BenchResource:
             json=body,
             headers=headers,
         )
-        return Run(self._client, response["id"], data=response)
+        run_id = response.get("id")
+        if not isinstance(run_id, str) or not run_id:
+            raise APIResponseError("Rollout response has no valid id")
+        return Run(self._client, run_id, data=response)
 
     def get(self, run_id: str) -> Run:
         """Fetch an existing rollout run by ID."""

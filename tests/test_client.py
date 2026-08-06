@@ -55,6 +55,29 @@ def test_client_request_raises_api_error(mock_api: respx.MockRouter) -> None:
     client.close()
 
 
+def test_client_exposes_structured_api_error(mock_api: respx.MockRouter) -> None:
+    mock_api.get("/data/uploads/upload_123").respond(
+        409,
+        json={
+            "error": {
+                "code": "upload_in_use",
+                "message": "Upload is used by an active job",
+                "retryable": False,
+            }
+        },
+    )
+    client = openbot_sdk.Client(api_key="test-key")
+
+    with pytest.raises(openbot_sdk.APIError) as exc_info:
+        client._request("GET", "/data/uploads/upload_123")
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.code == "upload_in_use"
+    assert exc_info.value.retryable is False
+    assert str(exc_info.value) == "Upload is used by an active job"
+    client.close()
+
+
 def test_client_rejects_insecure_base_url() -> None:
     with pytest.raises(ValueError, match="HTTPS"):
         openbot_sdk.Client(api_key="test-key", base_url="http://api.example.test/v1")

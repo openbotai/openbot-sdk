@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import time
 from typing import TYPE_CHECKING, Any, cast
 
 from openbot_sdk._errors import RunError
+from openbot_sdk._paths import api_path, resource_id
 
 if TYPE_CHECKING:
     from openbot_sdk._client import Client
@@ -21,7 +21,7 @@ class Run:
 
     def __init__(self, client: Client, run_id: str, data: dict[str, Any] | None = None) -> None:
         self._client = client
-        self.run_id = run_id
+        self.run_id = resource_id(run_id, name="run id")
         self._data = data or {}
 
     @property
@@ -40,7 +40,9 @@ class Run:
 
     def refresh(self) -> Run:
         """Fetch the latest run state from the API."""
-        data = self._client._request("GET", f"/bench/rollouts/{self.run_id}")
+        data = self._client._request(
+            "GET", api_path("bench", "rollouts", self.run_id)
+        )
         self._data = data
         return self
 
@@ -64,8 +66,8 @@ class Run:
             RunError: if the run fails or is cancelled.
             APIError: if polling returns an API error.
         """
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
+        deadline = self._client._clock() + timeout
+        while self._client._clock() < deadline:
             self.refresh()
             status = self.status.lower()
             # The API's terminal success status is "done"; "success"/"completed"
@@ -74,7 +76,7 @@ class Run:
                 return RunResult(self._data)
             if status in {"failed", "error", "cancelled"}:
                 raise RunError(f"Run {self.run_id} ended with status '{status}'")
-            time.sleep(poll_interval)
+            self._client._sleep(poll_interval)
 
         raise TimeoutError(f"Run {self.run_id} did not complete within {timeout} seconds")
 

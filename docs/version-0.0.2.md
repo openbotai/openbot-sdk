@@ -1,52 +1,32 @@
-# OpenBot SDK 0.0.2 — Self-service Data Ingest Client
+# OpenBot SDK 0.0.2 — Thin Hosted Data API Client
 
-> Status: Planned
-> Current package: `0.0.1`
-> Target package: `0.0.2`
+> Status: Implemented in SDK source; Hosted API production gate pending
+> Previous package: `0.0.1`
+> Current source version: `0.0.2`
 > Required server contract: OpenBot Data API `0.0.2`
 
-This document is the release contract for the Python SDK. It describes planned
-work, not functionality available in the current package. The SDK must not claim
-these capabilities are live until the corresponding hosted endpoints pass their
-production release gates.
+This document is the release contract for the Python SDK. `openbot-sdk` is a
+thin client for the OpenBot platform: it sends authenticated requests, transfers
+bytes to platform-issued upload targets, polls resources, and streams downloads.
+It does not implement Hosted Data business logic locally.
+
+## Verified release state — 2026-08-06
+
+| Surface | Verified state |
+|---|---|
+| SDK source | `VERSION=0.0.2`; Python 3.9–3.12 each pass 65 tests with 2 opt-in live tests skipped |
+| Static/package checks | Ruff, Mypy, version consistency, wheel, sdist, Twine, wheel import, and `py.typed` pass |
+| PyPI | `openbot-sdk` is not published; the official project JSON endpoint returns `404` |
+| Hosted Data | Production manifest reports Data `0.0.1`, `openapi_sha256=null`, and `production_smoke.passed=false` |
+| Release decision | Source implementation complete; do not tag or publish `0.0.2` yet |
+
+Package source state, PyPI publication, and Hosted Data product state are three
+separate facts. None may be inferred from another.
 
 ## Goal
 
-`0.0.2` should let a developer complete one private, self-service workflow from
-Python without manually constructing HTTP requests:
-
-```text
-local MP4
-  -> direct single/multipart upload
-  -> server verification
-  -> dataset + subtask job
-  -> poll honest stage or cancel
-  -> download authenticated artifacts/export
-  -> delete raw upload and derived artifacts
-```
-
-The SDK remains a client. R2 credentials, authorization decisions, job state,
-retention enforcement, and processor behavior remain server responsibilities.
-
-## Current `0.0.1` baseline
-
-The current package already provides:
-
-- API-key authentication and HTTPS enforcement;
-- bounded retries for idempotent requests;
-- Bench rollout creation, polling, and result wrappers;
-- Data dataset registration and subtask job creation/polling;
-- review, approved export creation, and authenticated export download;
-- webhook signature verification;
-- typed SDK exceptions for authentication, API, network, run, and Data failures.
-
-These capabilities remain supported in `0.0.2`.
-
-## Required `0.0.2` functionality
-
-### 1. Upload resource and direct transfer
-
-Add a typed `DataUpload` resource and the following workflow:
+Let a Python developer call the platform without manually constructing HTTP
+requests or handling presigned multipart transfer details:
 
 ```python
 upload = client.data.create_upload(
@@ -56,104 +36,162 @@ upload = client.data.create_upload(
 )
 upload.upload()
 upload.wait_until_ready()
-```
 
-The SDK must:
-
-- derive filename, size, content type, and SHA-256 from the local file;
-- use single PUT at or below the server threshold and multipart above it;
-- sign only the requested multipart part numbers and collect ETags;
-- retry failed parts without retransmitting successful parts;
-- support resuming an existing pending multipart upload;
-- complete the upload and poll until `ready` or a terminal rejection;
-- never attach the OpenBot API `Authorization` header to presigned R2 URLs;
-- avoid logging presigned URLs, signatures, or local file contents.
-
-The server independently validates every declared value; SDK checksum and media
-metadata are convenience inputs, not trust boundaries.
-
-### 2. Dataset, upload, and job listing
-
-Add typed, lazy pagination helpers for:
-
-- `list_uploads(...)`;
-- `list_datasets(...)`;
-- `list_jobs(...)`.
-
-They must preserve opaque `next_page_token` values, apply filters consistently,
-and never fabricate a total count. Iteration stops when the server returns no
-next token.
-
-### 3. Private-upload job creation and honest progress
-
-Extend `subtask_job(...)` with `upload_id`, mutually exclusive with `video_url`.
-Extend `DataJob` with:
-
-- `stage`, `stage_updated_at`, and `attempt_count`;
-- `cancel_requested`, structured warnings, and stable error details;
-- `cancel()` with idempotent handling of already-cancelled jobs;
-- terminal handling for `done`, `failed`, and `cancelled` without fake progress
-  percentages.
-
-```python
 job = client.data.subtask_job(
     dataset_id="data_123",
     upload_id=upload.id,
     video_key="observation.images.top",
     taxonomy=["reach", "grasp", "place"],
 )
-
-for active_job in client.data.list_jobs(status="running"):
-    print(active_job.id, active_job.stage)
-
-job.cancel()
+result = job.wait()
 ```
 
-### 4. Authenticated artifact lifecycle
+The server owns authorization, upload limits and mode selection, verification,
+job state transitions, processing, review, retention, and deletion policy.
 
-Add helpers to:
+## Responsibility boundary
 
-- list a job's evidence/result artifacts;
-- stream an artifact to a file-like object or destination path;
-- support authenticated HEAD and single-range download requests;
-- delete job artifacts, exports, and raw uploads;
-- expose `retention_until` and distinguish deleted (`410`) resources.
+| SDK responsibility | Platform responsibility |
+|---|---|
+| Attach API authentication to OpenBot API requests | Authenticate, authorize, and enforce organization scope |
+| Serialize documented request fields and expose response resources | Validate every field and execute business rules |
+| Calculate local file size and SHA-256 for the request | Independently verify uploaded bytes and media metadata |
+| Transfer bytes to server-issued single/multipart targets | Select upload mode, part size/count, sign URLs, and own R2 credentials |
+| Retry safe requests/parts and resume server-reported completed parts | Make mutations idempotent and reconcile incomplete uploads |
+| Poll the status and stage returned by the API | Run Queue workers and decide valid state transitions |
+| Stream authenticated content to a caller-owned destination | Enforce artifact/export access, retention, and tombstones |
 
-Large content must stream to disk rather than being loaded entirely into memory.
-Resource identifiers come from the API; callers cannot supply an arbitrary R2
-object key or URL path.
+The SDK never runs FFmpeg, parses robot datasets, creates annotations, makes
+review decisions, enforces retention, or embeds R2 credentials.
 
-### 5. Stable resources and errors
+## Current `0.0.1` baseline
 
-Add typed wrappers for upload, paginated result, artifact, progress, and API error
-payloads while retaining access to forward-compatible unknown fields. `APIError`
-must expose the server's stable error code, safe message, HTTP status, and
-retryability without including secrets or raw provider errors.
+The existing client provides:
 
-## Release acceptance criteria
+- API-key authentication and HTTPS enforcement;
+- bounded retries for idempotent requests;
+- Bench rollout creation, polling, and result wrappers;
+- Data dataset registration and subtask job creation/polling;
+- review, approved export creation, and authenticated export download;
+- webhook signature verification;
+- typed SDK exceptions for authentication, API, network, run, and Data failures.
 
-The version is complete only when:
+These capabilities remain compatible in `0.0.2`.
+
+## Required `0.0.2` client functionality
+
+### 1. Direct upload transport
+
+`create_upload(...)` derives the local filename, byte size, MIME type, and
+SHA-256, then calls the platform upload endpoint. `DataUpload.upload()` follows
+the transfer instructions returned by that endpoint:
+
+- send one `PUT` for single uploads;
+- request only missing part URLs for multipart uploads;
+- stream bounded file slices instead of loading the file into memory;
+- collect ETags and send them to the platform completion endpoint;
+- retry failed requests without retransmitting completed parts;
+- resume an existing upload only when the local file matches server metadata;
+- poll until the platform reports `ready` or a terminal rejection.
+
+The client must never forward the OpenBot `Authorization` header to a presigned
+target. Presigned targets must use HTTPS, must not redirect, and may only receive
+the transfer headers supplied by the platform. The SDK does not choose upload
+limits, part sizes, verification rules, or retention policy.
+
+### 2. Platform resource calls
+
+Expose thin, typed helpers for the documented endpoints:
+
+- get/list/delete uploads;
+- register and list datasets;
+- create/get/list/cancel Data jobs;
+- submit review decisions and create/download/delete approved exports;
+- list/head/download/delete job artifacts.
+
+`subtask_job(...)` accepts exactly one platform source reference: `upload_id` or
+`video_url`. Dynamic resource IDs are validated before URL construction. The SDK
+does not reproduce server authorization or state-machine rules.
+
+### 3. Lazy listing and honest status
+
+Upload, dataset, job, and artifact listings are lazy iterators. They:
+
+- preserve the server's opaque string `next_page_token` exactly;
+- reapply the same filters on every request;
+- suppress duplicate resource IDs across pages;
+- reject malformed resources or repeated tokens;
+- do not fabricate an exact total count.
+
+`DataJob` exposes the status, stage, timestamps, attempt count, warnings, and
+error details returned by the platform. It does not calculate percentages or
+predict completion time.
+
+### 4. Authenticated streaming downloads
+
+Artifact and export content remains behind the OpenBot API. The SDK supports:
+
+- authenticated `HEAD` for artifact metadata;
+- single-range artifact downloads;
+- file-like destinations;
+- path destinations written through a temporary `.part` file and atomically
+  replaced only after success;
+- explicit raw-upload, artifact, and export deletion calls.
+
+HTTP `410` remains a structured `APIError` from the platform. Resource wrappers
+expose documented fields such as `retention_until` and retain unknown response
+fields through mapping access for forward compatibility.
+
+### 5. Package contract
+
+- all public methods have Python type hints;
+- the wheel contains `py.typed`;
+- `VERSION` is the single package version source;
+- Python 3.9–3.12 are supported;
+- `APIError` exposes the platform's safe message, stable code, HTTP status, and
+  retryability without including raw response bodies in exception messages.
+
+## Source acceptance criteria
+
+The SDK source is complete only when:
 
 - mocked tests cover single upload, multipart boundaries, failed-part retry,
-  resume, checksum mismatch, timeout, and complete retry;
-- tests prove OpenBot authorization is never forwarded to a presigned R2 URL;
-- pagination has no duplicate SDK yields and preserves filters/tokens;
-- queued and running cancellation behavior matches the server contract;
-- artifact downloads stream and support interrupted-download cleanup;
-- all new public methods include type hints and runnable examples;
-- Python 3.9–3.12 tests, Ruff, Mypy, package build, and Twine checks pass;
-- a production smoke completes upload -> job -> review -> authenticated download
-  -> delete against the released Data API `0.0.2`.
+  resume, local identity mismatch, timeout, and completion retry;
+- tests prove OpenBot authorization is never forwarded to a presigned target;
+- pagination preserves filters/tokens and never yields a duplicate ID;
+- queued, running, and already-cancelled responses are handled consistently;
+- artifact/export downloads stream and interrupted path downloads clean up;
+- every public method has type hints and the example workflow runs under mocks;
+- Python 3.9–3.12 tests, Ruff, Mypy, package build, Twine, and wheel `py.typed`
+  checks pass.
 
-The SDK package must not be released as `0.0.2` before the matching hosted API is
-deployed and the production smoke passes.
+Source acceptance proves the SDK client, not production availability.
+
+## Hosted release gate
+
+The package must not be released as `0.0.2` until the Hosted Data API advertises
+Data `0.0.2`, publishes a valid OpenAPI hash, and records a passing production
+smoke. The external smoke must cover private upload, job processing, human
+review boundary, authenticated download, and deletion.
+
+`scripts/check_hosted_release.py` enforces this gate in the release workflow.
+The live tests are opt-in and must never be reported as passed when skipped.
+
+## Acceptance coverage
+
+- `tests/test_data_v002.py`: transport, retry, pagination, cancellation, secure
+  presigned requests, and streaming downloads;
+- `tests/test_data_v002_acceptance.py`: resume, malformed contracts, lifecycle
+  helpers, `410` handling, type hints, docs, and runnable examples;
+- `tests/test_data_live.py`: opt-in mutating Hosted API smoke;
+- `examples/data_v002_workflow.py`: public upload/job and approved-export usage.
 
 ## Explicit non-goals
 
-- Implementing server upload, authorization, retention, or Queue logic;
-- asynchronous Python client support;
-- visual timeline review UI;
-- LeRobot/Hugging Face batch ingestion or local dataset parsing;
-- webhook delivery, automatic callbacks, or a real Bench runner;
-- payment, credit purchase, or paid entitlement helpers;
-- claiming a production SLA during the `0.0.x` free beta.
+- implementing upload authorization, R2 signing, Queue, processing, or retention;
+- running FFmpeg or validating video contents in the SDK;
+- parsing LeRobot/HDF5 datasets or duplicating `openbot-data`;
+- generating annotations, approving review output, or fabricating job progress;
+- asynchronous Python client support in `0.0.2`;
+- visual review UI, payment, credits, or entitlement logic;
+- claiming production availability before the Hosted release gate passes.

@@ -1,8 +1,13 @@
 # openbot-sdk
 
-> Python SDK for [OpenBot.ai](https://openbot.ai) — robot policy evaluation, robot data curation, and synthetic training data.
+> Thin Python client for the [OpenBot.ai](https://openbot.ai) platform API.
 
-[API documentation](https://openbot.ai/api/docs) · [Source repository](https://github.com/openbotai/openbot-sdk)
+[Library documentation](docs/README.md) · [API reference](docs/api-reference.md) ·
+[Hosted API documentation](https://openbot.ai/api/docs) · [Source repository](https://github.com/openbotai/openbot-sdk)
+
+The SDK handles authentication, safe HTTP retries, platform-issued file
+transfers, polling, and streaming downloads. OpenBot's servers own evaluation,
+data processing, review state, storage, authorization, and retention.
 
 ```python
 import openbot_sdk
@@ -28,11 +33,59 @@ print(result.intervention_rate)     # 0.14
 
 ## Install
 
+`0.0.2` is currently a source candidate and is not published on PyPI. Install a
+checkout while developing against the matching Hosted API:
+
 ```bash
-pip install openbot-sdk
+pip install -e .
 ```
 
-Requires Python 3.9+.
+Supported and tested on Python 3.9–3.12.
+
+## Runnable Data API client example
+
+The repository includes a `0.0.2` client flow using only public SDK methods. It
+calls the Hosted platform; it does not process or annotate video locally:
+
+```bash
+pip install -e .
+export OPENBOT_API_KEY="ob_live_..."
+python examples/data_v002_workflow.py ./episode-0001.mp4 \
+  --dataset-id data_123 \
+  --out ./subtasks.json
+```
+
+The first run uploads and processes the video, then returns the review output ID.
+After checking that existing review output in the review UI, approve and download
+it without creating another upload:
+
+```bash
+python examples/data_v002_workflow.py \
+  --review-output-id review_123 \
+  --out ./subtasks.json
+```
+
+The second command only exports a review output already approved by a human in
+the review UI; the demo never changes review status. Add `--delete-export` only
+when the downloaded export has been verified and the server copy may be removed.
+The demo is exercised against a mocked API during the package test suite; a real
+run requires the matching Hosted Data API.
+
+Maintainers can run the mutating production release smoke only after the Hosted
+API is deployed:
+
+```bash
+export OPENBOT_RUN_LIVE_DATA_SMOKE=1
+export OPENBOT_API_KEY="ob_live_..."
+export OPENBOT_LIVE_DATASET_ID="data_123"
+export OPENBOT_LIVE_VIDEO="./episode-0001.mp4"
+pytest -m live tests/test_data_live.py
+```
+
+This first smoke uploads and processes a fixture, stops at review, and deletes
+the raw upload. Export smoke is separate: approve a dedicated fixture in the UI,
+set `OPENBOT_LIVE_APPROVED_REVIEW_OUTPUT_ID`, then run the live suite again. No
+test auto-approves model output.
 
 ## Authentication
 
@@ -72,7 +125,7 @@ print(result.task_success)
 job = client.data.subtask_job(
     dataset_id="data_123",
     video_key="observation.images.top",
-    video_url="https://signed.example/episode.mp4",
+    video_url="https://public.example/episode.mp4",
     task_hint="place the red block in the bowl",
     taxonomy=["reach", "grasp", "place"],
     idempotency_key="episode-123",
@@ -85,12 +138,38 @@ client.data.review(
     result.review_output_id,
     status="approved",
     annotations=edited,
+    expected_revision=result.review_output["revision_id"],
 )
-artifact = client.data.export(result.review_output_id, format="lerobot_sidecar")
-content = client.data.download_export(artifact["id"])
-with open("subtasks.json", "wb") as output:
-    output.write(content)
+export = client.data.export(result.review_output_id, format="lerobot_sidecar")
+client.data.download_export_to(export.id, "subtasks.json")
 ```
+
+### Upload a private robot video
+
+```python
+upload = client.data.create_upload(
+    path="episode-0001.mp4",
+    dataset_id="data_123",
+    idempotency_key="episode-0001",
+)
+upload.upload()
+upload.wait_until_ready()
+
+job = client.data.subtask_job(
+    dataset_id="data_123",
+    upload_id=upload.id,
+    video_key="observation.images.top",
+    taxonomy=["reach", "grasp", "place"],
+)
+
+for active_job in client.data.list_jobs(status="running"):
+    print(active_job.id, active_job.stage)
+```
+
+These helpers only call the Hosted Data API `0.0.2` contract. Upload mode,
+verification, processing, authorization, retention, and deletion semantics are
+decided and enforced by the platform. Production availability still requires
+the Hosted release manifest and production smoke.
 
 Unreviewed model output is never treated as ground truth. Segment confidence remains `None` unless the configured annotation profile has been independently calibrated.
 
@@ -136,27 +215,33 @@ python scripts/check_version.py
 pytest -v
 ruff check src tests
 mypy src
+scripts/test_matrix.sh
 python -m build
 ```
 
-`VERSION` is the package version source of truth. To release, update `VERSION`
-and `CHANGELOG.md`, verify locally, then publish a GitHub Release whose tag is
-`v<version>`. The release workflow validates the tag before publishing to PyPI.
+The local matrix script requires [`uv`](https://docs.astral.sh/uv/) and tests
+Python 3.9–3.12 without requiring a repository CI workflow.
+
+`VERSION` is the package version source of truth. Before publishing a GitHub
+Release, the Hosted release manifest must pass
+`python scripts/check_hosted_release.py`. The release workflow then validates
+the tag, test matrix, build metadata, Hosted gate, and wheel before publishing
+to PyPI.
 
 ## Status
 
-The current package version is `0.0.1`, an early preview. Bench rollout and Data
-subtask/review/export/download clients are implemented. The hosted Data processor
-is live in beta; machine-generated timelines still require explicit review before
-export.
+The current source version is `0.0.2`, an unreleased thin-client candidate.
+Bench and Data API wrappers are implemented, but the self-service Hosted Data
+API is still `0.0.1` in production. Machine-generated timelines require explicit
+human review before export.
 
 ## Roadmap
 
-- `0.0.1` current: API authentication, retries, Bench rollout helpers, Data
+- `0.0.1`: API authentication, retries, Bench rollout helpers, Data
   register/subtask/poll/review/export/download, and webhook verification.
-- [`0.0.2` planned](docs/version-0.0.2.md): self-service private video upload,
-  dataset/job listing, honest progress, cancellation, and authenticated artifact
-  lifecycle helpers.
+- [`0.0.2` implemented in SDK source](docs/version-0.0.2.md): thin wrappers for
+  platform-issued private upload, resource listing, status/cancellation, and
+  authenticated downloads. Production availability remains gated by the Hosted API.
 
 ## License
 

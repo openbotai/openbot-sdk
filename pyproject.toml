@@ -1,7 +1,7 @@
 [project]
 name = "openbot-sdk"
 dynamic = ["version"]
-description = "Python SDK for OpenBot.ai — robot policy evaluation, data curation, and synthetic training data."
+description = "Thin Python client for the OpenBot.ai platform API."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -44,13 +44,13 @@ dev = [
   "pytest-asyncio>=0.23.0",
   "respx>=0.22.0",
   "ruff>=0.6.0",
-  "mypy>=1.11.0",
+  "mypy>=1.11.0,<1.19",
   "twine>=6.2.0",
 ]
 
 [project.urls]
 Homepage = "https://openbot.ai"
-Documentation = "https://openbot.ai/api/docs"
+Documentation = "https://github.com/openbotai/openbot-sdk/tree/main/docs"
 Repository = "https://github.com/openbotai/openbot-sdk"
 Issues = "https://github.com/openbotai/openbot-sdk/issues"
 
@@ -64,6 +64,7 @@ packages = ["src/openbot_sdk"]
 [tool.hatch.build.targets.sdist]
 include = [
   "/docs",
+  "/examples",
   "/LICENSE",
   "/README.md",
   "/CHANGELOG.md",
@@ -81,6 +82,9 @@ exclude = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+  "live: opt-in tests that mutate the Hosted OpenBot API",
+]
 
 [tool.hatch.version]
 path = "VERSION"

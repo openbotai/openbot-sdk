@@ -31,9 +31,11 @@ jobs:
         run: python scripts/check_version.py
 
       - name: Lint with ruff
+        if: matrix.python-version == '3.9'
         run: ruff check src tests
 
       - name: Type check with mypy
+        if: matrix.python-version == '3.9'
         run: mypy src
 
       - name: Run tests

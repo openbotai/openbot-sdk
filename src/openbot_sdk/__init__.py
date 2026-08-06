@@ -17,6 +17,7 @@ Example:
     >>> print(result.task_success)
 """
 
+from openbot_sdk._artifact import DataArtifact
 from openbot_sdk._bench import BenchResource
 from openbot_sdk._client import Client
 from openbot_sdk._data import DataResource, ExportFormat, ReviewStatus
@@ -25,13 +26,17 @@ from openbot_sdk._errors import (
     APIError,
     APIResponseError,
     AuthenticationError,
+    ClientClosedError,
     DataJobError,
+    DataUploadError,
     NetworkError,
     OpenBotError,
     RunError,
     WebhookVerificationError,
 )
+from openbot_sdk._models import DataExport, Dataset, ReviewOutput
 from openbot_sdk._run import Run, RunResult
+from openbot_sdk._upload import DataUpload
 from openbot_sdk._version import __version__
 from openbot_sdk._webhooks import construct_signature, verify_signature
 
@@ -41,6 +46,11 @@ __all__ = [
     "DataResource",
     "DataJob",
     "DataJobResult",
+    "DataUpload",
+    "DataArtifact",
+    "Dataset",
+    "ReviewOutput",
+    "DataExport",
     "ReviewStatus",
     "ExportFormat",
     "Run",
@@ -50,8 +60,10 @@ __all__ = [
     "APIError",
     "APIResponseError",
     "NetworkError",
+    "ClientClosedError",
     "RunError",
     "DataJobError",
+    "DataUploadError",
     "WebhookVerificationError",
     "verify_signature",
     "construct_signature",
