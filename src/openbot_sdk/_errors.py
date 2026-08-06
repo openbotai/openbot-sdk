@@ -37,19 +37,11 @@ class NetworkError(OpenBotError):
 
 
 class ClientClosedError(OpenBotError):
-    """Raised when a resource is used after its owning client was closed."""
+    """Raised when a closed client is used."""
 
 
 class RunError(OpenBotError):
     """Raised when a rollout run fails or is cancelled."""
-
-
-class DataJobError(OpenBotError):
-    """Raised when a Data job fails or is cancelled."""
-
-
-class DataUploadError(OpenBotError):
-    """Raised when a Data upload is rejected, expires, or cannot be transferred."""
 
 
 class WebhookVerificationError(OpenBotError):

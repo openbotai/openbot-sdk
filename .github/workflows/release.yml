@@ -22,24 +22,12 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: python scripts/check_version.py --tag "${GITHUB_REF_NAME}"
       - run: pytest -q
-      - run: ruff check src tests examples
+      - run: ruff check src tests
       - run: mypy src
-
-  hosted-release:
-    name: Verify Hosted Data release
-    needs: test
-    runs-on: ubuntu-latest
-    environment: hosted-release
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: python scripts/check_hosted_release.py
 
   build:
     name: Build distributions
-    needs: [test, hosted-release]
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read

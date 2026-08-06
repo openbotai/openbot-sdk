@@ -10,14 +10,11 @@ authors = [
 ]
 keywords = [
   "OpenBot.ai",
-  "robot data",
-  "robot policy evaluation",
+  "API client",
+  "API key",
   "embodied AI",
   "VLA",
-  "teleoperation data",
-  "robot learning",
-  "sim-to-real",
-  "failure replay",
+  "HTTP client",
   "robotics",
 ]
 classifiers = [
@@ -44,13 +41,13 @@ dev = [
   "pytest-asyncio>=0.23.0",
   "respx>=0.22.0",
   "ruff>=0.6.0",
-  "mypy>=1.11.0,<1.19",
+  "mypy>=1.11.0",
   "twine>=6.2.0",
 ]
 
 [project.urls]
 Homepage = "https://openbot.ai"
-Documentation = "https://github.com/openbotai/openbot-sdk/tree/main/docs"
+Documentation = "https://openbot.ai/api/docs"
 Repository = "https://github.com/openbotai/openbot-sdk"
 Issues = "https://github.com/openbotai/openbot-sdk/issues"
 
@@ -64,7 +61,6 @@ packages = ["src/openbot_sdk"]
 [tool.hatch.build.targets.sdist]
 include = [
   "/docs",
-  "/examples",
   "/LICENSE",
   "/README.md",
   "/CHANGELOG.md",
@@ -82,9 +78,6 @@ exclude = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = [
-  "live: opt-in tests that mutate the Hosted OpenBot API",
-]
 
 [tool.hatch.version]
 path = "VERSION"
