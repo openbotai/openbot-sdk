@@ -39,8 +39,6 @@ Returns raw response bytes.
 - `APIError`
 - `APIResponseError`
 - `NetworkError`
-- `RunError` for the existing Bench wrapper
-- `WebhookVerificationError`
 
 Endpoint-specific wrappers may be added only after the matching OpenBot API is
 published.

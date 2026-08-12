@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0
+
+### Changed
+
+- Removed the unreleased Bench wrapper and run polling types.
+- Kept the SDK as a neutral authenticated client for operations published by
+  the production OpenAPI contract.
+- Removed customer webhook signing helpers until a deployed asynchronous API
+  publishes a callback contract.
+
 ## 0.0.2
 
 ### Added

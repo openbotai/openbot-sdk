@@ -38,11 +38,3 @@ class NetworkError(OpenBotError):
 
 class ClientClosedError(OpenBotError):
     """Raised when a closed client is used."""
-
-
-class RunError(OpenBotError):
-    """Raised when a rollout run fails or is cancelled."""
-
-
-class WebhookVerificationError(OpenBotError):
-    """Raised when a webhook signature cannot be verified."""

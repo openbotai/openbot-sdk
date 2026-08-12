@@ -54,9 +54,10 @@ Only call routes published in the current OpenBot OpenAPI document. As the
 platform adds real APIs, the SDK may add small convenience wrappers for those
 same contracts.
 
-The package currently retains the `client.bench` wrapper for the platform's
-existing Bench contract. Bench execution is a deterministic mock today, not
-robot or simulator evaluation evidence.
+The SDK intentionally has no Bench, Synth, or Hosted Data resource wrapper.
+Future convenience wrappers are added only after their API operation is
+published in the production OpenAPI contract; `request(...)` remains the
+forward-compatible escape hatch.
 
 ## Errors, retries, and security
 
@@ -76,21 +77,12 @@ The client retries idempotent methods and mutations carrying an
 Plain HTTP base URLs are rejected by default; enable them only for explicit
 local testing.
 
-## Webhooks
-
-```python
-from openbot_sdk import verify_signature
-
-verify_signature(raw_request_bytes, signature_header, webhook_secret)
-```
-
-Pass the raw bytes unchanged.
-
 ## Development
 
 ```bash
 pip install -e ".[dev]"
 python scripts/check_version.py
+python scripts/check_openapi_contract.py /path/to/openapi.json
 pytest -v
 ruff check src tests
 mypy src

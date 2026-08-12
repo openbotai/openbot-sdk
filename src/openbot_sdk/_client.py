@@ -9,7 +9,6 @@ from urllib.parse import urlparse
 
 import httpx
 
-from openbot_sdk._bench import BenchResource
 from openbot_sdk._errors import (
     APIError,
     APIResponseError,
@@ -80,7 +79,6 @@ class Client:
             timeout=self.timeout,
         )
         self._closed = False
-        self.bench = BenchResource(self)
 
     def _version(self) -> str:
         from openbot_sdk._version import __version__
