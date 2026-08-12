@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate an OpenBot OpenAPI file or URL against the neutral SDK contract."""
+"""Validate an OpenBot OpenAPI file or URL against the 0.2 SDK contract."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def main() -> int:
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print("OpenAPI contract is compatible with openbot-sdk 0.1.0")
+    print("OpenAPI contract is compatible with openbot-sdk 0.2.0")
     return 0
 
 

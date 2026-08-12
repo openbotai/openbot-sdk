@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+
+- Ego Semantic Annotation create/get/cancel/result wrappers.
+- Mandatory stable idempotency key, source SHA-256, and bounded duration checks.
+- OpenAPI compatibility checks for the complete asynchronous operation surface.
+
+### Safety
+
+- The wrapper does not perform inference locally or fabricate fallback results.
+- Feature-gate, concurrency, provider, and billing failures remain structured API errors.
+
 ## 0.1.0
 
 ### Changed

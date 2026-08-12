@@ -35,6 +35,30 @@ You can also pass the key explicitly:
 client = Client(api_key="ob_...")
 ```
 
+## Ego Semantic Annotation (0.2.0 candidate)
+
+The first convenience wrapper creates an asynchronous, feature-gated annotation
+job. It requires a stable idempotency key because transport retries must not
+reserve credits or enqueue work twice:
+
+```python
+job = client.create_ego_semantic_annotation(
+    source_url="https://storage.example/episode-001.mp4",
+    source_sha256="...64 hex characters...",
+    duration_seconds=84,
+    idempotency_key="episode-001-annotation-v1",
+    context="prepare a cup of coffee",
+    labels=[{"key": "reach"}, {"key": "grasp"}],
+)
+
+job = client.get_ego_semantic_annotation(job["id"])
+if job["status"] == "completed":
+    result = client.get_ego_semantic_annotation_result(job["id"])
+```
+
+The active API must expose the operation and the workspace must be in the
+internal canary. An unavailable gate is a real API error, not a local fallback.
+
 ## Call platform APIs
 
 Use `request` for JSON APIs and `request_bytes` for byte responses:
@@ -55,9 +79,8 @@ platform adds real APIs, the SDK may add small convenience wrappers for those
 same contracts.
 
 The SDK intentionally has no Bench, Synth, or Hosted Data resource wrapper.
-Future convenience wrappers are added only after their API operation is
-published in the production OpenAPI contract; `request(...)` remains the
-forward-compatible escape hatch.
+Convenience wrappers correspond to operations in the checked OpenAPI contract;
+`request(...)` remains the forward-compatible escape hatch.
 
 ## Errors, retries, and security
 
