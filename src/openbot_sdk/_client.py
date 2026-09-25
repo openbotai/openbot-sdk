@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 import time
 from typing import Any, Callable, cast
 from urllib.parse import urlparse
@@ -20,9 +19,14 @@ from openbot_sdk._errors import (
 
 DEFAULT_BASE_URL = "https://api.openbot.ai/v1"
 RETRYABLE_STATUS_CODES = frozenset({429, 502, 503, 504})
+# A mutation's Idempotency-Key is bound to its first outcome. The gateway burns
+# the key when the upstream fails (502), so a same-key retry would only turn the
+# real error into a 409; 502 is therefore never retried for mutations.
+KEYED_MUTATION_RETRYABLE_STATUS_CODES = frozenset({429, 503, 504})
+# The first call with this key is still running; waiting and replaying the same
+# key eventually returns the stored result without a second charge.
+IN_PROGRESS_ERROR_CODES = frozenset({"invocation_in_progress"})
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "DELETE"})
-IDEMPOTENCY_KEY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$")
-SHA256_PATTERN = re.compile(r"^[a-fA-F0-9]{64}$")
 
 
 class Client:
@@ -161,57 +165,6 @@ class Client:
         """Call an OpenBot platform endpoint and return its authenticated byte response."""
         return self._request_bytes(method, path, timeout=timeout)
 
-    def create_ego_semantic_annotation(
-        self,
-        *,
-        source_url: str,
-        source_sha256: str,
-        duration_seconds: int,
-        idempotency_key: str,
-        context: str | None = None,
-        labels: list[dict[str, str]] | None = None,
-    ) -> dict[str, Any]:
-        """Create a feature-gated asynchronous Ego Semantic Annotation job."""
-        if not IDEMPOTENCY_KEY_PATTERN.fullmatch(idempotency_key):
-            raise ValueError("idempotency_key must contain 8-200 safe characters")
-        if not SHA256_PATTERN.fullmatch(source_sha256):
-            raise ValueError("source_sha256 must be 64 hexadecimal characters")
-        if not isinstance(duration_seconds, int) or not 1 <= duration_seconds <= 7200:
-            raise ValueError("duration_seconds must be an integer between 1 and 7200")
-        parsed_source = urlparse(source_url)
-        if parsed_source.scheme != "https" or not parsed_source.netloc:
-            raise ValueError("source_url must be an absolute HTTPS URL")
-        payload: dict[str, Any] = {
-            "source": {
-                "type": "video_url",
-                "url": source_url,
-                "sha256": source_sha256.lower(),
-                "duration_seconds": duration_seconds,
-            }
-        }
-        if context is not None:
-            payload["context"] = context
-        if labels is not None:
-            payload["labels"] = labels
-        return self._request(
-            "POST",
-            "/ego/semantic-annotations",
-            json=payload,
-            headers={"Idempotency-Key": idempotency_key},
-        )
-
-    def get_ego_semantic_annotation(self, job_id: str) -> dict[str, Any]:
-        """Read a tenant-scoped Ego Semantic Annotation job."""
-        return self._request("GET", f"/ego/semantic-annotations/{job_id}")
-
-    def cancel_ego_semantic_annotation(self, job_id: str) -> dict[str, Any]:
-        """Idempotently request cancellation of an annotation job."""
-        return self._request("POST", f"/ego/semantic-annotations/{job_id}/cancel")
-
-    def get_ego_semantic_annotation_result(self, job_id: str) -> dict[str, Any]:
-        """Read the validated JSON result for a completed annotation job."""
-        return self._request("GET", f"/ego/semantic-annotations/{job_id}/result")
-
     def _send_with_retries(
         self,
         method: str,
@@ -223,9 +176,11 @@ class Client:
         timeout: float,
     ) -> httpx.Response:
         normalized_method = method.upper()
-        can_retry = normalized_method in IDEMPOTENT_METHODS or bool(
+        idempotent_method = normalized_method in IDEMPOTENT_METHODS
+        keyed_mutation = not idempotent_method and bool(
             headers and headers.get("Idempotency-Key")
         )
+        can_retry = idempotent_method or keyed_mutation
         attempts = self.max_retries + 1 if can_retry else 1
 
         for attempt in range(attempts):
@@ -244,11 +199,32 @@ class Client:
                 self._sleep_before_retry(attempt, None)
                 continue
 
-            if response.status_code not in RETRYABLE_STATUS_CODES or attempt + 1 >= attempts:
+            retryable = (
+                self._keyed_mutation_should_retry(response)
+                if keyed_mutation
+                else response.status_code in RETRYABLE_STATUS_CODES
+            )
+            if not retryable or attempt + 1 >= attempts:
                 return response
             self._sleep_before_retry(attempt, response.headers.get("Retry-After"))
 
         raise NetworkError("API request failed after retries")
+
+    def _keyed_mutation_should_retry(self, response: httpx.Response) -> bool:
+        if response.status_code in KEYED_MUTATION_RETRYABLE_STATUS_CODES:
+            return True
+        return response.status_code == 409 and self._error_code(response) in IN_PROGRESS_ERROR_CODES
+
+    @staticmethod
+    def _error_code(response: httpx.Response) -> str | None:
+        try:
+            payload = response.json()
+        except ValueError:
+            return None
+        if isinstance(payload, dict) and isinstance(payload.get("error"), dict):
+            code = payload["error"].get("code")
+            return code if isinstance(code, str) else None
+        return None
 
     def _sleep_before_retry(self, attempt: int, retry_after: str | None) -> None:
         delay = self.retry_backoff * (2**attempt)

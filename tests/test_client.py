@@ -52,67 +52,6 @@ def test_client_exposes_only_platform_resources() -> None:
     client.close()
 
 
-def test_create_ego_semantic_annotation_uses_the_idempotent_contract(
-    mock_api: respx.MockRouter,
-) -> None:
-    route = mock_api.post("/ego/semantic-annotations").respond(
-        202, json={"id": "ego_123", "status": "queued"}
-    )
-    client = openbot_sdk.Client(api_key="test-key")
-
-    job = client.create_ego_semantic_annotation(
-        source_url="https://storage.example/video.mp4",
-        source_sha256="a" * 64,
-        duration_seconds=84,
-        idempotency_key="annotation-request-123",
-        context="prepare coffee",
-        labels=[{"key": "grasp"}],
-    )
-
-    assert job == {"id": "ego_123", "status": "queued"}
-    request = route.calls[0].request
-    assert request.headers["Idempotency-Key"] == "annotation-request-123"
-    assert request.read()
-    client.close()
-
-
-def test_ego_semantic_annotation_resource_methods(mock_api: respx.MockRouter) -> None:
-    mock_api.get("/ego/semantic-annotations/ego_123").respond(
-        200, json={"id": "ego_123", "status": "running"}
-    )
-    mock_api.post("/ego/semantic-annotations/ego_123/cancel").respond(
-        202, json={"id": "ego_123", "status": "cancelling"}
-    )
-    mock_api.get("/ego/semantic-annotations/ego_123/result").respond(
-        200, json={"schema_version": "openbot.ego-semantic-annotation.v1", "segments": []}
-    )
-    client = openbot_sdk.Client(api_key="test-key")
-    assert client.get_ego_semantic_annotation("ego_123")["status"] == "running"
-    assert client.cancel_ego_semantic_annotation("ego_123")["status"] == "cancelling"
-    assert client.get_ego_semantic_annotation_result("ego_123")["segments"] == []
-    client.close()
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [("source_sha256", "short"), ("duration_seconds", 0), ("idempotency_key", "short")],
-)
-def test_create_ego_semantic_annotation_validates_identity_fields(
-    field: str, value: object
-) -> None:
-    client = openbot_sdk.Client(api_key="test-key")
-    arguments: dict[str, object] = {
-        "source_url": "https://storage.example/video.mp4",
-        "source_sha256": "a" * 64,
-        "duration_seconds": 84,
-        "idempotency_key": "annotation-request-123",
-    }
-    arguments[field] = value
-    with pytest.raises(ValueError):
-        client.create_ego_semantic_annotation(**arguments)  # type: ignore[arg-type]
-    client.close()
-
-
 def test_client_request_raises_api_error(mock_api: respx.MockRouter) -> None:
     mock_api.get("/unknown").respond(404, text="Not found")
 
@@ -207,5 +146,85 @@ def test_client_retries_idempotent_request(mock_api: respx.MockRouter) -> None:
     data = client._request("GET", "/me")
 
     assert data["key_id"] == "key_123"
+    assert route.call_count == 2
+    client.close()
+
+
+def test_keyed_mutation_does_not_retry_a_burned_key_after_502(
+    mock_api: respx.MockRouter,
+) -> None:
+    route = mock_api.post("/invoke/judge")
+    route.side_effect = [
+        Response(502, json={"error": {"code": "upstream_error", "message": "HTTP 500"}}),
+        Response(409, json={"error": {"code": "upstream_error", "message": "failed"}}),
+    ]
+    client = openbot_sdk.Client(api_key="test-key", retry_backoff=0)
+
+    with pytest.raises(openbot_sdk.APIError) as exc_info:
+        client.request("POST", "/invoke/judge", json={}, headers={"Idempotency-Key": "key-00001"})
+
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.code == "upstream_error"
+    assert route.call_count == 1
+    client.close()
+
+
+def test_keyed_mutation_waits_for_an_in_progress_invocation(
+    mock_api: respx.MockRouter,
+) -> None:
+    route = mock_api.post("/invoke/judge")
+    route.side_effect = [
+        ConnectError("reset"),
+        Response(409, json={"error": {"code": "invocation_in_progress", "message": "busy"}}),
+        Response(200, json={"verdict": "accept"}),
+    ]
+    client = openbot_sdk.Client(api_key="test-key", retry_backoff=0)
+
+    data = client.request(
+        "POST", "/invoke/judge", json={}, headers={"Idempotency-Key": "key-00001"}
+    )
+
+    assert data == {"verdict": "accept"}
+    assert route.call_count == 3
+    assert {call.request.headers["Idempotency-Key"] for call in route.calls} == {"key-00001"}
+    client.close()
+
+
+def test_keyed_mutation_retries_settlement_pending(mock_api: respx.MockRouter) -> None:
+    route = mock_api.post("/invoke/judge")
+    route.side_effect = [
+        Response(503, json={"error": {"code": "settlement_pending", "message": "retry"}}),
+        Response(200, json={"verdict": "accept"}),
+    ]
+    client = openbot_sdk.Client(api_key="test-key", retry_backoff=0)
+
+    data = client.request(
+        "POST", "/invoke/judge", json={}, headers={"Idempotency-Key": "key-00001"}
+    )
+
+    assert data == {"verdict": "accept"}
+    assert route.call_count == 2
+    client.close()
+
+
+def test_keyed_mutation_does_not_retry_other_conflicts(mock_api: respx.MockRouter) -> None:
+    route = mock_api.post("/invoke/judge")
+    route.respond(409, json={"error": {"code": "idempotency_key_conflict", "message": "x"}})
+    client = openbot_sdk.Client(api_key="test-key", retry_backoff=0)
+
+    with pytest.raises(openbot_sdk.APIError) as exc_info:
+        client.request("POST", "/invoke/judge", json={}, headers={"Idempotency-Key": "key-00001"})
+
+    assert exc_info.value.code == "idempotency_key_conflict"
+    assert route.call_count == 1
+    client.close()
+
+
+def test_idempotent_request_still_retries_502(mock_api: respx.MockRouter) -> None:
+    route = mock_api.get("/me")
+    route.side_effect = [Response(502, text="bad gateway"), Response(200, json={"ok": True})]
+    client = openbot_sdk.Client(api_key="test-key", retry_backoff=0)
+
+    assert client.request("GET", "/me") == {"ok": True}
     assert route.call_count == 2
     client.close()

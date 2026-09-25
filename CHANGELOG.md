@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0
+
+### Removed
+
+- Ego Semantic Annotation create/get/cancel/result wrappers. The operation is
+  discontinued, and the OpenAPI compatibility check no longer requires its routes.
+
+### Fixed
+
+- Mutations carrying an `Idempotency-Key` are no longer retried after `502`:
+  the gateway burns the key when the upstream fails, so a same-key retry masked
+  the real error as `409`. `409 invocation_in_progress` is now retried with the
+  same key until the stored result is replayed.
+- `scripts/check_openapi_contract.py` sends an SDK User-Agent; the production
+  edge rejected the default Python-urllib agent with `403`, which would have
+  failed the release workflow.
+
 ## 0.2.0
 
 ### Added

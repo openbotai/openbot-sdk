@@ -9,8 +9,11 @@ Data product.
 
 ## Install
 
+`openbot-sdk` is not published to PyPI yet (package publishing is a later
+Platform milestone). Install it from source:
+
 ```bash
-pip install openbot-sdk
+pip install "git+https://github.com/openbotai/openbot-sdk.git"
 ```
 
 Requires Python 3.9+.
@@ -34,30 +37,6 @@ You can also pass the key explicitly:
 ```python
 client = Client(api_key="ob_...")
 ```
-
-## Ego Semantic Annotation (0.2.0 candidate)
-
-The first convenience wrapper creates an asynchronous, feature-gated annotation
-job. It requires a stable idempotency key because transport retries must not
-reserve credits or enqueue work twice:
-
-```python
-job = client.create_ego_semantic_annotation(
-    source_url="https://storage.example/episode-001.mp4",
-    source_sha256="...64 hex characters...",
-    duration_seconds=84,
-    idempotency_key="episode-001-annotation-v1",
-    context="prepare a cup of coffee",
-    labels=[{"key": "reach"}, {"key": "grasp"}],
-)
-
-job = client.get_ego_semantic_annotation(job["id"])
-if job["status"] == "completed":
-    result = client.get_ego_semantic_annotation_result(job["id"])
-```
-
-The active API must expose the operation and the workspace must be in the
-internal canary. An unavailable gate is a real API error, not a local fallback.
 
 ## Call platform APIs
 
@@ -95,8 +74,14 @@ except NetworkError as exc:
     print(exc)
 ```
 
-The client retries idempotent methods and mutations carrying an
-`Idempotency-Key` on transport errors, `429`, and transient `5xx` responses.
+The client retries idempotent methods on transport errors, `429`, and
+transient `5xx` responses. Mutations carrying an `Idempotency-Key` are retried
+with the same key only where that is safe: transport errors, `429`, `503`
+(for example `settlement_pending`), `504`, and `409 invocation_in_progress`.
+A `502` is returned immediately, because the gateway burns the key when the
+upstream fails; retry that call with a new key. For `POST /v1/invoke/:slug`,
+create the client with `timeout` (seconds) larger than the API's
+`x-openbot-timeout-ms`, so a slow upstream is not mistaken for a network failure.
 Plain HTTP base URLs are rejected by default; enable them only for explicit
 local testing.
 

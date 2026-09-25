@@ -4,10 +4,6 @@ from openbot_sdk._contract import openapi_compatibility_errors
 def required_paths() -> dict[str, dict[str, object]]:
     return {
         "/v1/me": {"get": {}},
-        "/v1/ego/semantic-annotations": {"post": {}},
-        "/v1/ego/semantic-annotations/{id}": {"get": {}},
-        "/v1/ego/semantic-annotations/{id}/cancel": {"post": {}},
-        "/v1/ego/semantic-annotations/{id}/result": {"get": {}},
     }
 
 
@@ -42,13 +38,9 @@ def test_neutral_sdk_rejects_removed_product_paths() -> None:
     ]
 
 
-def test_sdk_rejects_an_openapi_without_the_ego_result_route() -> None:
-    paths = required_paths()
-    del paths["/v1/ego/semantic-annotations/{id}/result"]
+def test_sdk_requires_the_api_key_context_route() -> None:
     errors = openapi_compatibility_errors({
-        "paths": paths,
+        "paths": {},
         "components": {"securitySchemes": {"Bearer": {"type": "http", "scheme": "bearer"}}},
     })
-    assert errors == [
-        "GET /v1/ego/semantic-annotations/{id}/result is required for Ego annotation"
-    ]
+    assert errors == ["GET /v1/me is required for API-key context probing"]
