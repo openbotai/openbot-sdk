@@ -9,11 +9,8 @@ Data product.
 
 ## Install
 
-`openbot-sdk` is not published to PyPI yet (package publishing is a later
-Platform milestone). Install it from source:
-
 ```bash
-pip install "git+https://github.com/openbotai/openbot-sdk.git"
+pip install openbot-sdk
 ```
 
 Requires Python 3.9+.
