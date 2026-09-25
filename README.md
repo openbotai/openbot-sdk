@@ -94,7 +94,17 @@ mypy src
 python -m build
 ```
 
-`VERSION` is the package version source of truth. Release tags use `v<version>`.
+`VERSION` is the package version source of truth. To release, update `VERSION`
+and `CHANGELOG.md`, verify locally, then publish a GitHub Release whose tag is
+`v<version>`. The release workflow tests every supported Python, builds the
+distributions, checks them against the production OpenAPI contract, and
+publishes to PyPI through a trusted publisher.
+
+## Status
+
+The released PyPI package and current source version are both `0.3.0`.
+`v0.3.0` points to commit `4187d508148095b12b7458ab1ae8983b087845bc`; the
+GitHub Release workflow published its wheel and source distribution to PyPI.
 
 ## Package boundaries
 
