@@ -55,7 +55,9 @@ jobs:
           /tmp/openbot-sdk-wheel/bin/python -c "import importlib.resources, openbot_sdk; assert importlib.resources.files('openbot_sdk').joinpath('py.typed').is_file()"
 
       - name: Require production API contract compatibility
-        run: python scripts/check_openapi_contract.py https://api.openbot.ai/openapi.json
+        # Run with the built wheel's interpreter: the runner Python does not
+        # have openbot_sdk installed, and this also checks the shipped package.
+        run: /tmp/openbot-sdk-wheel/bin/python scripts/check_openapi_contract.py https://api.openbot.ai/openapi.json
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4
